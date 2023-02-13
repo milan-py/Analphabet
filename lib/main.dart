@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const MyApp());
@@ -77,19 +78,23 @@ class _MyHomePageState extends State<MyHomePage> {
     final List<Map<String, dynamic>> maps = await db.query("quotes");
 
     setState(() {
-      quotes = List.generate(maps.length, (index) {
-        List<String> involvedPersons = [];
-        for (var i in jsonDecode(maps[index]["involvedPersons"])) {
-          involvedPersons.add(i as String);
-        }
+      quotes = List.generate(
+        maps.length,
+        (index) {
+          List<String> involvedPersons = [];
+          for (var i in jsonDecode(maps[index]["involvedPersons"])) {
+            involvedPersons.add(i as String);
+          }
 
-        return Quote(
+          return Quote(
             quote: maps[index]["quote"],
             context: maps[index]["context"],
             author: maps[index]["author"],
             involvedPersons: involvedPersons,
-            timestamp: DateTime.parse(maps[index]["timestamp"]));
-      });
+            timestamp: DateTime.parse(maps[index]["timestamp"]),
+          );
+        },
+      );
       quotes.sort((a, b) => a.timestamp.compareTo(b.timestamp));
     });
   }
@@ -147,7 +152,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 onPressed: () {
                   showAboutDialog(
                       context: context,
-                      applicationVersion: "0.1",
+                      applicationVersion: "0.2",
                       applicationLegalese: "von Milan Bömer",
                       applicationIcon: Expanded(
                         child: Image.asset("assets/app_icon.png",
@@ -158,25 +163,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           text: TextSpan(
                             style: Theme.of(context).textTheme.bodyMedium,
                             children: const [
-                              WidgetSpan(
-                                child: Icon(Icons.download),
-                              ),
-                              TextSpan(
-                                  text:
-                                      "speichert die Daten in der Datei zitate.json im Download Ordner. Mit"),
-                              WidgetSpan(
-                                child: Icon(Icons.add),
-                              ),
-                              TextSpan(
-                                  text:
-                                      "wird ein neues Zitat Hinzugefügt. Es können beliebig viele involvierte Hinzugefügt werden (Ich habe noch nicht ausprobiert ab wann es nicht mehr funktionieren würde). Mit"),
-                              WidgetSpan(child: Icon(Icons.upload)),
-                              TextSpan(
-                                  text: " können Zitate importiert werden."),
-                              TextSpan(
-                                  text:
-                                      " Involvierte können zum Beispiel Schüler oder Lehrer sein, die zu dem Zeitpunkt mit dem der zitiert wurde gesprochen haben. Wenn ein ganzer Dialog direkt zitiert wird sollte der wichtigste Teilhabende Autor sein und die anderen involvierte."
-                                      " Es sollten möglichst Vor- und Nachname notiert werden, damit später nicht Manuell die Namen manuell einheitlich gemacht werden müssen. Zitate sollten am gleichen Tag noch notiert werden, da sonst das Datum falsch ist.")
+                              TextSpan(text: "Sehr experimentell"),
                             ],
                           ),
                         )
@@ -188,8 +175,8 @@ class _MyHomePageState extends State<MyHomePage> {
               height: 60.0,
               width: 1.0,
             ),
-            IconButton(
-              icon: const Icon(Icons.download),
+            TextButton(
+              child: const Text("Export"),
               onPressed: () async {
                 final String jsonStr = jsonEncode(quotes);
                 Directory tempDirectory = await getTemporaryDirectory();
@@ -200,7 +187,7 @@ class _MyHomePageState extends State<MyHomePage> {
               },
             ),
             // imports quotes from json
-            IconButton(
+            TextButton(
               onPressed: () async {
                 FilePickerResult? result =
                     await FilePicker.platform.pickFiles();
@@ -216,21 +203,52 @@ class _MyHomePageState extends State<MyHomePage> {
                 }
                 await getQuotesFromDb();
               },
-              icon: const Icon(Icons.upload),
+              child: const Text("Import"),
             ),
             IconButton(
-                onPressed: () {
-                  final int quoteCount = quotes.length;
+              onPressed: () {
+                final int quoteCount = quotes.length;
 
-                  showDialog(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: const Text("Statistik"),
-                      content: Text("$quoteCount Zitat${quoteCount==1 ? "" : "e"} gesammelt"),
-                    ),
+                showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text("Statistik"),
+                    content: Text(
+                        "$quoteCount Zitat${quoteCount == 1 ? "" : "e"} gesammelt"),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.query_stats_rounded),
+            ),
+            IconButton(
+                onPressed: () async {
+                  Uri url = Uri.http(
+                    "quotes.hopto.org:8080",
+                    "/",
                   );
+                  http.Response response = await http.get(url);
+
+                  Database db = await _database;
+
+                  for (var i in jsonDecode(response.body)) {
+                    Quote currentQuote = Quote.fromJson(i);
+                    List<Map<String, Object?>> duplicates = await db.query(
+                      "quotes",
+                      where: "quote = ? AND author = ? AND context = ?",
+                      whereArgs: [
+                        currentQuote.quote,
+                        currentQuote.author,
+                        currentQuote.context
+                      ],
+                    );
+                    if(duplicates.isEmpty){
+                      await addQuoteToDb(currentQuote);
+
+                    }
+                  }
+                  await getQuotesFromDb();
                 },
-                icon: const Icon(Icons.query_stats_rounded)),
+                icon: const Icon(Icons.download)),
           ],
         ),
       ),
@@ -242,7 +260,7 @@ class _MyHomePageState extends State<MyHomePage> {
           await addQuoteToDb(quote);
           await getQuotesFromDb();
         },
-        tooltip: 'Create',
+        tooltip: "Hinzufügen",
         child: const Icon(Icons.add),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
