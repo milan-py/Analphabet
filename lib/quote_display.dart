@@ -49,7 +49,7 @@ class QuoteWidget extends StatelessWidget {
     onQuoteUpdate();
   }
 
-  static void showSnackBarMessage(BuildContext context, String message){
+  static void showSnackBarMessage(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),
     ));
@@ -108,22 +108,33 @@ class QuoteWidget extends StatelessWidget {
                           ],
                         ),
                       );
-                      if(result == "Ja") {
+                      if (result == "Ja") {
                         deleteQuote();
                       }
                     },
                     icon: const Icon(Icons.delete)),
                 IconButton(
                   onPressed: () {
-                    Uri url = Uri.http("quotes.hopto.org:8080", "/", );
+                    Uri url = Uri.http(
+                      "quotes.hopto.org:8080",
+                      "/",
+                    );
 
-                    http.put(url, body: jsonEncode(quote), headers: {"Content-Type": "application/json"}).then((http.Response response){
-                      if(response.statusCode == 200){
+                    http.put(url, body: jsonEncode(quote), headers: {
+                      "Content-Type": "application/json"
+                    }).then((http.Response response) {
+                      if (response.statusCode == 200) {
                         return;
                       }
-                      if(jsonDecode(response.body)["error"] == "duplicate"){
-                        showSnackBarMessage(context, "Wurde bereits Hochgeladen");
-                            return;
+                      if (response.statusCode == 429) {
+                        showSnackBarMessage(context,
+                        "Zu viele Anfragen, 10 pro Tag erlaubt");
+                        return;
+                      }
+                      if (jsonDecode(response.body)["error"] == "duplicate") {
+                        showSnackBarMessage(
+                            context, "Wurde bereits Hochgeladen");
+                        return;
                       }
                       showSnackBarMessage(context, "Etwas ist schiefgelaufen");
                     });
