@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:anal_phabet/settings_menu.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:anal_phabet/quote.dart';
@@ -34,7 +35,8 @@ class MyApp extends StatelessWidget {
       title: "Analphabet",
       routes: {
         "/": (context) => const MyHomePage(title: "Analphabet"),
-        "/new_quote_menu": (context) => const NewQuoteMenu()
+        "/new_quote_menu": (context) => const NewQuoteMenu(),
+        "/settings_menu": (context) => const SettingsMenu(),
       },
     );
   }
@@ -112,6 +114,11 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
+        actions: [
+          IconButton(onPressed: () {
+            Navigator.pushNamed(context, "/settings_menu");
+          }, icon: const Icon(Icons.settings))
+        ],
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
             bottom: Radius.circular(15),
@@ -226,27 +233,32 @@ class _MyHomePageState extends State<MyHomePage> {
                     "quotes.hopto.org:8080",
                     "/",
                   );
-                  http.Response response = await http.get(url);
+                  try {
+                    http.Response response = await http.get(url);
 
-                  Database db = await _database;
+                    Database db = await _database;
 
-                  for (var i in jsonDecode(response.body)) {
-                    Quote currentQuote = Quote.fromJson(i);
-                    List<Map<String, Object?>> duplicates = await db.query(
-                      "quotes",
-                      where: "quote = ? AND author = ? AND context = ?",
-                      whereArgs: [
-                        currentQuote.quote,
-                        currentQuote.author,
-                        currentQuote.context
-                      ],
-                    );
-                    if(duplicates.isEmpty){
-                      await addQuoteToDb(currentQuote);
-
+                    for (var i in jsonDecode(response.body)) {
+                      Quote currentQuote = Quote.fromJson(i);
+                      List<Map<String, Object?>> duplicates = await db.query(
+                        "quotes",
+                        where: "quote = ? AND author = ? AND context = ?",
+                        whereArgs: [
+                          currentQuote.quote,
+                          currentQuote.author,
+                          currentQuote.context
+                        ],
+                      );
+                      if (duplicates.isEmpty) {
+                        await addQuoteToDb(currentQuote);
+                      }
                     }
+                    await getQuotesFromDb();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text("Konnte nicht synchronisieren"),
+                    ));
                   }
-                  await getQuotesFromDb();
                 },
                 icon: const Icon(Icons.download)),
           ],

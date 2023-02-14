@@ -72,11 +72,20 @@ class _NewQuoteMenuState extends State<NewQuoteMenu> {
           padding: const EdgeInsets.all(12.0),
           child: Column(
             children: [
-              QuoteMenuField(controller: _quoteController, labelText: "Zitat",),
+              QuoteMenuField(
+                controller: _quoteController,
+                labelText: "Zitat",
+              ),
               const SizedBox(height: 10.0),
-              QuoteMenuField(controller: _contextController, labelText: "Kontext",),
+              QuoteMenuField(
+                controller: _contextController,
+                labelText: "Kontext",
+              ),
               const SizedBox(height: 10.0),
-              QuoteMenuField(controller: _authorController, labelText: "Autor",),
+              QuoteMenuField(
+                controller: _authorController,
+                labelText: "Autor",
+              ),
               const SizedBox(height: 10.0),
               const Text(
                 "involvierte Personen:",
@@ -105,13 +114,21 @@ class _NewQuoteMenuState extends State<NewQuoteMenu> {
                         children: [
                           Row(
                             children: [
-                              Expanded(child: QuoteMenuField(controller: _involvedPersonControllers.elementAt(index), labelText: "",)),
-                              IconButton(onPressed: () {
-                                setState(() {
-                                  --_involvedPersonCount;
-                                  _involvedPersonControllers.removeAt(index);
-                                });
-                              }, icon: const Icon(Icons.delete))
+                              Expanded(
+                                  child: QuoteMenuField(
+                                controller:
+                                    _involvedPersonControllers.elementAt(index),
+                                labelText: "",
+                              )),
+                              IconButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      --_involvedPersonCount;
+                                      _involvedPersonControllers
+                                          .removeAt(index);
+                                    });
+                                  },
+                                  icon: const Icon(Icons.delete))
                             ],
                           ),
                           const SizedBox(height: 8.0),
@@ -149,10 +166,10 @@ class _NewQuoteMenuState extends State<NewQuoteMenu> {
 }
 
 class QuoteMenuField extends StatelessWidget {
-
   const QuoteMenuField({
     Key? key,
-    required this.controller, required this.labelText,
+    required this.controller,
+    required this.labelText,
   }) : super(key: key);
 
   final String labelText;
@@ -163,10 +180,11 @@ class QuoteMenuField extends StatelessWidget {
     return TextField(
       autocorrect: false,
       controller: controller,
-
       textInputAction: TextInputAction.next,
       decoration: InputDecoration(
-          border: const OutlineInputBorder(), labelText: labelText,),
+        border: const OutlineInputBorder(),
+        labelText: labelText,
+      ),
     );
   }
 }

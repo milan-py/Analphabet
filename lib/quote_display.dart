@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:anal_phabet/quote.dart';
 import "package:flutter/material.dart";
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:http/http.dart' as http;
 
@@ -114,21 +115,35 @@ class QuoteWidget extends StatelessWidget {
                     },
                     icon: const Icon(Icons.delete)),
                 IconButton(
-                  onPressed: () {
+                  onPressed: () async {
                     Uri url = Uri.http(
                       "quotes.hopto.org:8080",
                       "/",
                     );
 
-                    http.put(url, body: jsonEncode(quote), headers: {
-                      "Content-Type": "application/json"
-                    }).then((http.Response response) {
+                    final SharedPreferences preferences = await SharedPreferences.getInstance();
+                    final String name = preferences.getString("name") ?? "";
+
+
+
+                    if(name.isEmpty){
+                      showSnackBarMessage(context,
+                          "Name muss in den Einstellungen gesetzt werden.");
+                      return;
+                    }
+
+                    try {
+                      var quoteJson = quote.toJson();
+                      quoteJson["user"] = name;
+                      http.Response response = await http.put(url, body: jsonEncode(quoteJson), headers: {
+                        "Content-Type": "application/json"
+                      });
                       if (response.statusCode == 200) {
                         return;
                       }
                       if (response.statusCode == 429) {
                         showSnackBarMessage(context,
-                        "Zu viele Anfragen, 10 pro Tag erlaubt");
+                            "Zu viele Anfragen, 10 pro Tag erlaubt");
                         return;
                       }
                       if (jsonDecode(response.body)["error"] == "duplicate") {
@@ -136,8 +151,10 @@ class QuoteWidget extends StatelessWidget {
                             context, "Wurde bereits Hochgeladen");
                         return;
                       }
-                      showSnackBarMessage(context, "Etwas ist schiefgelaufen");
-                    });
+                    } catch (e) {
+                      showSnackBarMessage(
+                          context, "Etwas ist schiefgelaufen");
+                    }
                   },
                   icon: const Icon(Icons.upload),
                 )
