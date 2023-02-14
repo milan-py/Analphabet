@@ -82,6 +82,7 @@ class QuoteWidget extends StatelessWidget {
                         child: Text("- ${quote.author}"),
                       ),
                       Text(formatDate(quote.timestamp)),
+                      Text(quote.user ?? ""),
                       const SizedBox(
                         height: 10.0,
                       ),

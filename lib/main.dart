@@ -62,7 +62,7 @@ class _MyHomePageState extends State<MyHomePage> {
       join(await getDatabasesPath(), "quotes_database.db"),
       onCreate: (db, version) {
         return db.execute(
-          "CREATE TABLE quotes(quote TEXT, context TEXT, author TEXT, involvedPersons TEXT, timestamp TEXT)",
+          "CREATE TABLE quotes(quote TEXT, context TEXT, author TEXT, involvedPersons TEXT, timestamp TEXT, user TEXT)",
         );
       },
       version: 1,
@@ -94,6 +94,7 @@ class _MyHomePageState extends State<MyHomePage> {
             author: maps[index]["author"],
             involvedPersons: involvedPersons,
             timestamp: DateTime.parse(maps[index]["timestamp"]),
+            user: maps[index]["user"],
           );
         },
       );

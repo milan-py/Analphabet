@@ -8,6 +8,7 @@ class Quote {
   final String author;
   final List<String> involvedPersons;
   final DateTime timestamp;
+  final String? user;
 
   const Quote({
     required this.quote,
@@ -15,6 +16,7 @@ class Quote {
     required this.author,
     required this.involvedPersons,
     required this.timestamp,
+    this.user,
   });
 
   Map<String, String> _toMap() {
@@ -25,6 +27,7 @@ class Quote {
       "author": author,
       "involvedPersons": jsonEncode(involvedPersons),
       "timestamp": timestamp.toIso8601String(),
+      "user": user ?? "",
     };
   }
 
@@ -44,6 +47,7 @@ class Quote {
       author: json["author"],
       involvedPersons: involvedPersons,
       timestamp: DateTime.parse(json["timestamp"]),
+      user: json["user"],
     );
   }
 
@@ -53,6 +57,6 @@ class Quote {
 
   @override
   String toString() {
-    return "Quote(quote: $quote, context: $context, author: $author, involvedPersons: $involvedPersons, timestamp: $timestamp)";
+    return "Quote(quote: $quote, context: $context, author: $author, involvedPersons: $involvedPersons, timestamp: $timestamp, user: $user)";
   }
 }
