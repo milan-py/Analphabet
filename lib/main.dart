@@ -160,7 +160,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 onPressed: () {
                   showAboutDialog(
                       context: context,
-                      applicationVersion: "0.2",
+                      applicationVersion: "0.3",
                       applicationLegalese: "von Milan Bömer",
                       applicationIcon: Expanded(
                         child: Image.asset("assets/app_icon.png",
