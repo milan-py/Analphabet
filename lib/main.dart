@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:anal_phabet/settings_menu.dart';
+import 'package:anal_phabet/utils.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:anal_phabet/quote.dart';
@@ -116,9 +117,11 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
-          IconButton(onPressed: () {
-            Navigator.pushNamed(context, "/settings_menu");
-          }, icon: const Icon(Icons.settings))
+          IconButton(
+              onPressed: () {
+                Navigator.pushNamed(context, "/settings_menu", arguments: {"database": _database});
+              },
+              icon: const Icon(Icons.settings))
         ],
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
@@ -160,7 +163,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 onPressed: () {
                   showAboutDialog(
                       context: context,
-                      applicationVersion: "0.3",
+                      applicationVersion: "0.4",
                       applicationLegalese: "von Milan Bömer",
                       applicationIcon: Expanded(
                         child: Image.asset("assets/app_icon.png",
@@ -243,12 +246,9 @@ class _MyHomePageState extends State<MyHomePage> {
                       Quote currentQuote = Quote.fromJson(i);
                       List<Map<String, Object?>> duplicates = await db.query(
                         "quotes",
-                        where: "quote = ? AND author = ? AND context = ?",
-                        whereArgs: [
-                          currentQuote.quote,
-                          currentQuote.author,
-                          currentQuote.context
-                        ],
+                        where:
+                            where,
+                        whereArgs: whereArgs(currentQuote),
                       );
                       if (duplicates.isEmpty) {
                         await addQuoteToDb(currentQuote);
@@ -256,9 +256,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     }
                     await getQuotesFromDb();
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text("Konnte nicht synchronisieren"),
-                    ));
+                    showSnackBarMessage(context, "Konnte nicht synchronisieren");
                   }
                 },
                 icon: const Icon(Icons.download)),

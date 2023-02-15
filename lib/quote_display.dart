@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:anal_phabet/quote.dart';
+import 'package:anal_phabet/utils.dart';
 import "package:flutter/material.dart";
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
@@ -35,25 +36,23 @@ class QuoteWidget extends StatelessWidget {
 
     Database db = await database;
 
-    await db.delete("quotes",
-        where: "quote = ? AND author = ?",
-        whereArgs: [quote.quote, quote.author]);
+    await db.delete(
+      "quotes",
+      where: where,
+      whereArgs: whereArgs(quote),
+    );
     await newQuote?.insertToDb(db);
     onQuoteUpdate();
   }
 
   Future<void> deleteQuote() async {
     Database db = await database;
-    await db.delete("quotes",
-        where: "quote = ? AND author = ?",
-        whereArgs: [quote.quote, quote.author]);
+    await db.delete(
+      "quotes",
+      where: where,
+      whereArgs: whereArgs(quote),
+    );
     onQuoteUpdate();
-  }
-
-  static void showSnackBarMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-    ));
   }
 
   @override
@@ -122,12 +121,11 @@ class QuoteWidget extends StatelessWidget {
                       "/",
                     );
 
-                    final SharedPreferences preferences = await SharedPreferences.getInstance();
+                    final SharedPreferences preferences =
+                        await SharedPreferences.getInstance();
                     final String name = preferences.getString("name") ?? "";
 
-
-
-                    if(name.isEmpty){
+                    if (name.isEmpty) {
                       showSnackBarMessage(context,
                           "Name muss in den Einstellungen gesetzt werden.");
                       return;
@@ -136,15 +134,15 @@ class QuoteWidget extends StatelessWidget {
                     try {
                       var quoteJson = quote.toJson();
                       quoteJson["user"] = name;
-                      http.Response response = await http.put(url, body: jsonEncode(quoteJson), headers: {
-                        "Content-Type": "application/json"
-                      });
+                      http.Response response = await http.put(url,
+                          body: jsonEncode(quoteJson),
+                          headers: {"Content-Type": "application/json"});
                       if (response.statusCode == 200) {
                         return;
                       }
                       if (response.statusCode == 429) {
-                        showSnackBarMessage(context,
-                            "Zu viele Anfragen, 10 pro Tag erlaubt");
+                        showSnackBarMessage(
+                            context, "Zu viele Anfragen, 10 pro Tag erlaubt");
                         return;
                       }
                       if (jsonDecode(response.body)["error"] == "duplicate") {
@@ -153,8 +151,7 @@ class QuoteWidget extends StatelessWidget {
                         return;
                       }
                     } catch (e) {
-                      showSnackBarMessage(
-                          context, "Etwas ist schiefgelaufen");
+                      showSnackBarMessage(context, "Etwas ist schiefgelaufen");
                     }
                   },
                   icon: const Icon(Icons.upload),

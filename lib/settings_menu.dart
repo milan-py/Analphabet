@@ -1,5 +1,8 @@
+import 'package:anal_phabet/utils.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart';
 
 class SettingsMenu extends StatefulWidget {
   const SettingsMenu({Key? key}) : super(key: key);
@@ -50,9 +53,28 @@ class _SettingsMenuState extends State<SettingsMenu> {
               controller: _nameController,
             ),
             const Text("nur echte Namen"),
-            ElevatedButton(onPressed: () {
-              _preferences.setString("name", _nameController.text);
-            }, child: const Text("Bestätigen")),
+            ElevatedButton(
+                onPressed: () async {
+                  final arguments =
+                      (ModalRoute.of(context)?.settings.arguments ??
+                          <String, dynamic>{}) as Map;
+                  final Database db = await arguments["database"];
+                  final users = await db.query("quotes", columns: ["user"]);
+
+                  final String name = _nameController.text.trim();
+
+                  for(Map i in users){
+                    if(mapEquals(i, {"user" : name})){
+                      showSnackBarMessage(context, "Nutzer existiert schon");
+                      return;
+                    }
+                  }
+
+                  _preferences.setString("name", _nameController.text);
+
+                  Navigator.pop(context);
+                },
+                child: const Text("Bestätigen")),
           ],
         ),
       ),
