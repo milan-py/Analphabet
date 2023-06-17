@@ -1,5 +1,6 @@
 import 'package:anal_phabet/quote.dart';
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 
 class NewQuoteMenu extends StatefulWidget {
   const NewQuoteMenu({Key? key}) : super(key: key);
@@ -13,6 +14,8 @@ class _NewQuoteMenuState extends State<NewQuoteMenu> {
   final TextEditingController _quoteController = TextEditingController();
   final TextEditingController _authorController = TextEditingController();
   final TextEditingController _contextController = TextEditingController();
+  DateTime inputDatetime = DateTime.now();
+  late String id;
 
   late Map arguments;
 
@@ -23,6 +26,8 @@ class _NewQuoteMenuState extends State<NewQuoteMenu> {
   @override
   void initState() {
     super.initState();
+    Uuid uuid = const Uuid();
+    id = uuid.v4();
   }
 
   @override
@@ -31,6 +36,12 @@ class _NewQuoteMenuState extends State<NewQuoteMenu> {
     _authorController.dispose();
 
     super.dispose();
+  }
+
+  static String fixedInt(int n, int count) => n.toString().padLeft(count, "0");
+
+  static String formatDateTime(DateTime dt) {
+    return "${fixedInt(dt.hour, 2)}:${fixedInt(dt.minute, 2)} ${dt.day}.${dt.month}.${dt.year}";
   }
 
   bool hasBeenBuilt = false;
@@ -53,6 +64,10 @@ class _NewQuoteMenuState extends State<NewQuoteMenu> {
       for (var i = 0; i < _involvedPersonCount; ++i) {
         _involvedPersonControllers[i].text = quote.involvedPersons.elementAt(i);
       }
+
+      inputDatetime = quote.timestamp;
+
+      id = quote.id;
     }
 
     hasBeenBuilt = true;
@@ -85,6 +100,45 @@ class _NewQuoteMenuState extends State<NewQuoteMenu> {
               QuoteMenuField(
                 controller: _authorController,
                 labelText: "Autor",
+              ),
+              const SizedBox(height: 10.0),
+              TextButton(
+                onPressed: () async {
+                  DateTime pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: inputDatetime,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2030),
+                      ) ??
+                      DateTime(
+                        inputDatetime.year,
+                        inputDatetime.month,
+                        inputDatetime.day,
+                        inputDatetime.hour,
+                        inputDatetime.minute,
+                      );
+
+                  TimeOfDay pickedTime = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.fromDateTime(inputDatetime),
+                      ) ??
+                      TimeOfDay(
+                        hour: inputDatetime.hour,
+                        minute: inputDatetime.minute,
+                      );
+
+                  setState(() {
+                    inputDatetime = DateTime(
+                      pickedDate.year,
+                      pickedDate.month,
+                      pickedDate.day,
+                      pickedTime.hour,
+                      pickedTime.minute,
+                    );
+                    print(inputDatetime);
+                  });
+                },
+                child: Text(formatDateTime(inputDatetime)),
               ),
               const SizedBox(height: 10.0),
               const Text(
@@ -152,9 +206,8 @@ class _NewQuoteMenuState extends State<NewQuoteMenu> {
             involvedPersons: List.generate(_involvedPersonCount, (index) {
               return _involvedPersonControllers.elementAt(index).text;
             }),
-            timestamp: arguments["quote"] == null
-                ? DateTime.now()
-                : arguments["quote"].timestamp,
+            timestamp: inputDatetime,
+            id: id
           );
 
           Navigator.pop(context, quote);

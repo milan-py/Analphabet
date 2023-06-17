@@ -9,6 +9,7 @@ class Quote {
   final List<String> involvedPersons;
   final DateTime timestamp;
   final String? user;
+  final String id;
 
   const Quote({
     required this.quote,
@@ -16,11 +17,12 @@ class Quote {
     required this.author,
     required this.involvedPersons,
     required this.timestamp,
+    required this.id,
     this.user,
   });
 
   Map<String, String> _toMap() {
-    // for json encoding an database insertion
+    // for json encoding a database insertion
     return {
       "quote": quote,
       "context": context,
@@ -28,6 +30,7 @@ class Quote {
       "involvedPersons": jsonEncode(involvedPersons),
       "timestamp": timestamp.toIso8601String(),
       "user": user ?? "",
+      "id": id,
     };
   }
 
@@ -48,6 +51,7 @@ class Quote {
       involvedPersons: involvedPersons,
       timestamp: DateTime.parse(json["timestamp"]),
       user: json["user"],
+      id: json["id"],
     );
   }
 

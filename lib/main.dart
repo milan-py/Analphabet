@@ -12,6 +12,7 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
 
 void main() {
   runApp(const MyApp());
@@ -63,7 +64,7 @@ class _MyHomePageState extends State<MyHomePage> {
       join(await getDatabasesPath(), "quotes_database.db"),
       onCreate: (db, version) {
         return db.execute(
-          "CREATE TABLE quotes(quote TEXT, context TEXT, author TEXT, involvedPersons TEXT, timestamp TEXT, user TEXT)",
+          "CREATE TABLE quotes(quote TEXT, context TEXT, author TEXT, involvedPersons TEXT, timestamp TEXT, user TEXT, id TEXT)",
         );
       },
       version: 1,
@@ -75,7 +76,7 @@ class _MyHomePageState extends State<MyHomePage> {
     quote?.insertToDb(db);
   }
 
-  Future<void> getQuotesFromDb() async {
+  Future<void> updateWithQuotesFromDb() async {
     final Database db = await _database;
 
     final List<Map<String, dynamic>> maps = await db.query("quotes");
@@ -90,13 +91,13 @@ class _MyHomePageState extends State<MyHomePage> {
           }
 
           return Quote(
-            quote: maps[index]["quote"],
-            context: maps[index]["context"],
-            author: maps[index]["author"],
-            involvedPersons: involvedPersons,
-            timestamp: DateTime.parse(maps[index]["timestamp"]),
-            user: maps[index]["user"],
-          );
+              quote: maps[index]["quote"],
+              context: maps[index]["context"],
+              author: maps[index]["author"],
+              involvedPersons: involvedPersons,
+              timestamp: DateTime.parse(maps[index]["timestamp"]),
+              user: maps[index]["user"],
+              id: maps[index]["id"]);
         },
       );
       quotes.sort((a, b) => a.timestamp.compareTo(b.timestamp));
@@ -107,7 +108,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     initializeDb().then((value) {
-      getQuotesFromDb();
+      updateWithQuotesFromDb();
     });
   }
 
@@ -119,7 +120,8 @@ class _MyHomePageState extends State<MyHomePage> {
         actions: [
           IconButton(
               onPressed: () {
-                Navigator.pushNamed(context, "/settings_menu", arguments: {"database": _database});
+                Navigator.pushNamed(context, "/settings_menu",
+                    arguments: {"database": _database});
               },
               icon: const Icon(Icons.settings))
         ],
@@ -140,7 +142,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   QuoteWidget(
                     quote: quotes.elementAt(index),
                     database: _database,
-                    onQuoteUpdate: () => getQuotesFromDb(),
+                    onQuoteUpdate: () => updateWithQuotesFromDb(),
                   ),
                   const SizedBox(
                     height: 10.0,
@@ -212,7 +214,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 for (var i in jsonDecode(jsonStr)) {
                   addQuoteToDb(Quote.fromJson(i));
                 }
-                await getQuotesFromDb();
+                await updateWithQuotesFromDb();
               },
               child: const Text("Import"),
             ),
@@ -243,20 +245,30 @@ class _MyHomePageState extends State<MyHomePage> {
                     Database db = await _database;
 
                     for (var i in jsonDecode(response.body)) {
+                      Uuid uuid = const Uuid();
+                      i["id"] = uuid
+                          .v4(); // needs to be done since the server doesn't return ids, because you could delete quotes with the id
                       Quote currentQuote = Quote.fromJson(i);
-                      List<Map<String, Object?>> duplicates = await db.query(
-                        "quotes",
-                        where:
-                            where,
-                        whereArgs: whereArgs(currentQuote),
-                      );
-                      if (duplicates.isEmpty) {
+                      await db.delete("quotes",
+                          where: "id = ?", whereArgs: [currentQuote.id]);
+                      if ((await db.query("quotes",
+                              where:
+                                  "quote = ? AND context = ? AND author = ? and involvedPersons = ? AND timestamp = ?",
+                              whereArgs: [
+                            currentQuote.quote,
+                            currentQuote.context,
+                            currentQuote.author,
+                            jsonEncode(currentQuote.involvedPersons),
+                            currentQuote.timestamp.toIso8601String(),
+                          ]))
+                          .isEmpty) {
                         await addQuoteToDb(currentQuote);
                       }
                     }
-                    await getQuotesFromDb();
-                  } catch (e) {
-                    showSnackBarMessage(context, "Konnte nicht synchronisieren");
+                    await updateWithQuotesFromDb();
+                  } on http.ClientException {
+                    showSnackBarMessage(
+                        context, "Konnte nicht synchronisieren");
                   }
                 },
                 icon: const Icon(Icons.download)),
@@ -269,7 +281,7 @@ class _MyHomePageState extends State<MyHomePage> {
           final dynamic quote =
               await Navigator.pushNamed(context, "/new_quote_menu");
           await addQuoteToDb(quote);
-          await getQuotesFromDb();
+          await updateWithQuotesFromDb();
         },
         tooltip: "Hinzufügen",
         child: const Icon(Icons.add),

@@ -3,12 +3,13 @@ import 'dart:convert';
 import 'package:anal_phabet/quote.dart';
 import 'package:anal_phabet/utils.dart';
 import "package:flutter/material.dart";
+import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:http/http.dart' as http;
 
-class QuoteWidget extends StatelessWidget {
-  const QuoteWidget(
+class QuoteWidget extends StatefulWidget {
+  QuoteWidget(
       {Key? key,
       required this.quote,
       required this.database,
@@ -25,38 +26,60 @@ class QuoteWidget extends StatelessWidget {
     return "${dt.day}.${dt.month}.${dt.year}";
   }
 
+  @override
+  State<QuoteWidget> createState() => _QuoteWidgetState();
+}
+
+class _QuoteWidgetState extends State<QuoteWidget> {
+  late bool loadedFromServer;
+
   Future<void> editInDb(context) async {
     final dynamic newQuote = await Navigator.pushNamed(
         context, "/new_quote_menu",
-        arguments: {"quote": quote});
+        arguments: {"quote": widget.quote});
 
     if (newQuote == null) {
       return;
     }
 
-    Database db = await database;
+    Database db = await widget.database;
 
     await db.delete(
       "quotes",
-      where: where,
-      whereArgs: whereArgs(quote),
+      where: "id = ?",
+      whereArgs: [widget.quote.id],
     );
     await newQuote?.insertToDb(db);
-    onQuoteUpdate();
+    widget.onQuoteUpdate();
   }
 
   Future<void> deleteQuote() async {
-    Database db = await database;
+    Database db = await widget.database;
     await db.delete(
       "quotes",
-      where: where,
-      whereArgs: whereArgs(quote),
+      where: "id = ?",
+      whereArgs: [widget.quote.id],
     );
-    onQuoteUpdate();
+    widget.onQuoteUpdate();
+  }
+
+  Future<void> deleteQuoteOnServer(BuildContext context) async {
+    try {
+      Uri url = Uri.http(
+        "quotes.hopto.org:8080",
+        "/${widget.quote.id}",
+      );
+
+      Response response = await http.delete(url);
+    } on ClientException {
+      showSnackBarMessage(context, "Konnte nicht löschen");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    loadedFromServer = !(widget.quote.user == null || widget.quote.user == "");
+
     return GestureDetector(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -65,7 +88,9 @@ class QuoteWidget extends StatelessWidget {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor,
+                  color: loadedFromServer
+                      ? Colors.blueGrey[600]
+                      : Theme.of(context).primaryColor,
                   borderRadius: const BorderRadius.all(Radius.circular(20)),
                 ),
                 child: Padding(
@@ -73,15 +98,17 @@ class QuoteWidget extends StatelessWidget {
                   child: Column(
                     children: [
                       Text(
-                        ",,${quote.quote}\"",
+                        ",,${widget.quote.quote}\"",
                         style: const TextStyle(fontSize: 20),
                       ),
                       Align(
                         alignment: Alignment.centerRight,
-                        child: Text("- ${quote.author}"),
+                        child: Text("- ${widget.quote.author}"),
                       ),
-                      Text(formatDate(quote.timestamp)),
-                      Text(quote.user ?? ""),
+                      Text(QuoteWidget.formatDate(widget.quote.timestamp)),
+                      Text(loadedFromServer
+                          ? "${widget.quote.user} - vom Server geladen"
+                          : ""),
                       const SizedBox(
                         height: 10.0,
                       ),
@@ -97,19 +124,44 @@ class QuoteWidget extends StatelessWidget {
                       String? result = await showDialog<String>(
                         context: context,
                         builder: (BuildContext context) => AlertDialog(
-                          title: const Text("Löschen?"),
-                          actions: [
-                            TextButton(
-                                onPressed: () => Navigator.pop(context, "Nein"),
-                                child: const Text("Nein")),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, "Ja"),
-                              child: const Text("Ja"),
-                            )
-                          ],
+                          title: Text(
+                              loadedFromServer ? "Lokal löschen?" : "Nur Lokal oder auf dem Server und Lokal löschen?"),
+                          actions: loadedFromServer
+                              ? [
+                                  TextButton(
+                                      onPressed: () => Navigator.pop(
+                                          context, "local and server"),
+                                      child: const Text("löschen")),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, "cancel"),
+                                    child: const Text("Abbrechen"),
+                                  ),
+                                ]
+                              : [
+                                  // quote.user == null: not loaded from server
+                                  TextButton(
+                                      onPressed: () => Navigator.pop(context,
+                                          "local and server"),
+                                      child: const Text(
+                                          "Lokal und auf Server löschen")),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(
+                                        context, "server"),
+                                    child: const Text("Nur Auf Server löschen"),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, "Abbrechen"),
+                                    child: const Text("cancel"),
+                                  ),
+                                ],
                         ),
                       );
-                      if (result == "Ja") {
+                      if (result == "server") {
+                        deleteQuoteOnServer(context);
+                      } else if (result == "local and server") {
+                        deleteQuoteOnServer(context);
                         deleteQuote();
                       }
                     },
@@ -132,7 +184,7 @@ class QuoteWidget extends StatelessWidget {
                     }
 
                     try {
-                      var quoteJson = quote.toJson();
+                      var quoteJson = widget.quote.toJson();
                       quoteJson["user"] = name;
                       http.Response response = await http.put(url,
                           body: jsonEncode(quoteJson),
