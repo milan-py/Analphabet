@@ -236,7 +236,7 @@ class _MyHomePageState extends State<MyHomePage> {
             IconButton(
                 onPressed: () async {
                   Uri url = Uri.http(
-                    "quotes.hopto.org:8080",
+                    "quote.hopto.org:8080",
                     "/",
                   );
                   try {
