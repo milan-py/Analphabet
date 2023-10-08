@@ -70,7 +70,7 @@ class _QuoteWidgetState extends State<QuoteWidget> {
         "/${widget.quote.id}",
       );
 
-      Response response = await http.delete(url);
+      await http.delete(url);
     } on ClientException {
       showSnackBarMessage(context, "Konnte nicht löschen");
     }
@@ -119,53 +119,43 @@ class _QuoteWidgetState extends State<QuoteWidget> {
             ),
             Column(
               children: [
-                IconButton(
-                    onPressed: () async {
-                      String? result = await showDialog<String>(
-                        context: context,
-                        builder: (BuildContext context) => AlertDialog(
-                          title: Text(
-                              loadedFromServer ? "Lokal löschen?" : "Nur Lokal oder auf dem Server und Lokal löschen?"),
-                          actions: loadedFromServer
-                              ? [
-                                  TextButton(
-                                      onPressed: () => Navigator.pop(
-                                          context, "local and server"),
-                                      child: const Text("löschen")),
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, "cancel"),
-                                    child: const Text("Abbrechen"),
-                                  ),
-                                ]
-                              : [
-                                  // quote.user == null: not loaded from server
-                                  TextButton(
-                                      onPressed: () => Navigator.pop(context,
-                                          "local and server"),
-                                      child: const Text(
-                                          "Lokal und auf Server löschen")),
-                                  TextButton(
+                loadedFromServer
+                    ? Container()
+                    : IconButton(
+                        onPressed: () async {
+                          String? result = await showDialog<String>(
+                            context: context,
+                            builder: (BuildContext context) => AlertDialog(
+                              title: const Text(
+                                  "Nur Lokal oder auf dem Server und Lokal löschen?"),
+                              actions: [
+                                // quote.user == null: not loaded from server
+                                TextButton(
                                     onPressed: () => Navigator.pop(
-                                        context, "server"),
-                                    child: const Text("Nur Auf Server löschen"),
-                                  ),
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, "Abbrechen"),
-                                    child: const Text("cancel"),
-                                  ),
-                                ],
-                        ),
-                      );
-                      if (result == "server") {
-                        deleteQuoteOnServer(context);
-                      } else if (result == "local and server") {
-                        deleteQuoteOnServer(context);
-                        deleteQuote();
-                      }
-                    },
-                    icon: const Icon(Icons.delete)),
+                                        context, "local and server"),
+                                    child: const Text(
+                                        "Lokal und auf Server löschen")),
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(context, "server"),
+                                  child: const Text("Nur Auf Server löschen"),
+                                ),
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(context, "Abbrechen"),
+                                  child: const Text("cancel"),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (result == "server") {
+                            deleteQuoteOnServer(context);
+                          } else if (result == "local and server") {
+                            deleteQuoteOnServer(context);
+                            deleteQuote();
+                          }
+                        },
+                        icon: const Icon(Icons.delete)),
                 IconButton(
                   onPressed: () async {
                     Uri url = Uri.http(

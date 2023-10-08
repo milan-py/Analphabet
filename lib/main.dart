@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:anal_phabet/settings_menu.dart';
 import 'package:anal_phabet/utils.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:anal_phabet/quote.dart';
 import 'package:anal_phabet/quote_display.dart';
@@ -198,25 +197,6 @@ class _MyHomePageState extends State<MyHomePage> {
                     .writeAsString(jsonStr);
                 Share.shareXFiles([XFile("${tempDirectory.path}/zitate.json")]);
               },
-            ),
-            // imports quotes from json
-            TextButton(
-              onPressed: () async {
-                FilePickerResult? result =
-                    await FilePicker.platform.pickFiles();
-                if (result == null) {
-                  return;
-                }
-
-                File file = File(result.files.single.path ?? "");
-                String jsonStr = await file.readAsString();
-
-                for (var i in jsonDecode(jsonStr)) {
-                  addQuoteToDb(Quote.fromJson(i));
-                }
-                await updateWithQuotesFromDb();
-              },
-              child: const Text("Import"),
             ),
             IconButton(
               onPressed: () {

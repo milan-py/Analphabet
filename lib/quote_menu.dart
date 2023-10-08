@@ -14,10 +14,10 @@ class _NewQuoteMenuState extends State<NewQuoteMenu> {
   final TextEditingController _quoteController = TextEditingController();
   final TextEditingController _authorController = TextEditingController();
   final TextEditingController _contextController = TextEditingController();
-  DateTime inputDatetime = DateTime.now();
-  late String id;
+  DateTime _inputDatetime = DateTime.now();
+  late String _id;
 
-  late Map arguments;
+  late Map _arguments;
 
   List<TextEditingController> _involvedPersonControllers = [
     TextEditingController()
@@ -27,7 +27,7 @@ class _NewQuoteMenuState extends State<NewQuoteMenu> {
   void initState() {
     super.initState();
     Uuid uuid = const Uuid();
-    id = uuid.v4();
+    _id = uuid.v4();
   }
 
   @override
@@ -44,15 +44,16 @@ class _NewQuoteMenuState extends State<NewQuoteMenu> {
     return "${fixedInt(dt.hour, 2)}:${fixedInt(dt.minute, 2)} ${dt.day}.${dt.month}.${dt.year}";
   }
 
-  bool hasBeenBuilt = false;
+  bool _hasBeenBuilt = false;
+  late final bool _loadedFromServer;
 
   @override
   Widget build(BuildContext context) {
-    arguments = (ModalRoute.of(context)?.settings.arguments ??
+    _arguments = (ModalRoute.of(context)?.settings.arguments ??
         <String, dynamic>{}) as Map;
 
-    if (arguments["quote"] != null && !hasBeenBuilt) {
-      final Quote quote = arguments["quote"];
+    if (_arguments["quote"] != null && !_hasBeenBuilt) {
+      final Quote quote = _arguments["quote"];
 
       _quoteController.text = quote.quote;
       _authorController.text = quote.author;
@@ -65,17 +66,33 @@ class _NewQuoteMenuState extends State<NewQuoteMenu> {
         _involvedPersonControllers[i].text = quote.involvedPersons.elementAt(i);
       }
 
-      inputDatetime = quote.timestamp;
+      _inputDatetime = quote.timestamp;
 
-      id = quote.id;
+      _id = quote.id;
+
+      _loadedFromServer = !(quote.user == "");
+    }
+    else if(!_hasBeenBuilt) {
+      _loadedFromServer = false;
     }
 
-    hasBeenBuilt = true;
+    _hasBeenBuilt = true;
+
+    String title = "";
+    if (_arguments["quote"] == null) {
+      title = "neues Zitat";
+    }
+    else if (_loadedFromServer) {
+      title = "Zitat anschauen";
+    }
+    else {
+      title = "Zitat bearbeiten";
+    }
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-            arguments["quote"] == null ? "neues Zitat" : "Zitat bearbeiten"),
+            title),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
             bottom: Radius.circular(15),
@@ -88,57 +105,60 @@ class _NewQuoteMenuState extends State<NewQuoteMenu> {
           child: Column(
             children: [
               QuoteMenuField(
+                deactivate: _loadedFromServer,
                 controller: _quoteController,
                 labelText: "Zitat",
               ),
               const SizedBox(height: 10.0),
               QuoteMenuField(
+                deactivate: _loadedFromServer,
                 controller: _contextController,
                 labelText: "Kontext",
               ),
               const SizedBox(height: 10.0),
               QuoteMenuField(
+                deactivate: _loadedFromServer,
                 controller: _authorController,
                 labelText: "Autor",
               ),
               const SizedBox(height: 10.0),
               TextButton(
-                onPressed: () async {
+                onPressed: _loadedFromServer ? () {} : () async {
                   DateTime pickedDate = await showDatePicker(
                         context: context,
-                        initialDate: inputDatetime,
+                        initialDate: _inputDatetime,
                         firstDate: DateTime(2020),
                         lastDate: DateTime(2030),
                       ) ??
                       DateTime(
-                        inputDatetime.year,
-                        inputDatetime.month,
-                        inputDatetime.day,
-                        inputDatetime.hour,
-                        inputDatetime.minute,
+                        _inputDatetime.year,
+                        _inputDatetime.month,
+                        _inputDatetime.day,
+                        _inputDatetime.hour,
+                        _inputDatetime.minute,
                       );
 
                   TimeOfDay pickedTime = await showTimePicker(
                         context: context,
-                        initialTime: TimeOfDay.fromDateTime(inputDatetime),
+                        initialTime: TimeOfDay.fromDateTime(_inputDatetime),
                       ) ??
                       TimeOfDay(
-                        hour: inputDatetime.hour,
-                        minute: inputDatetime.minute,
+                        hour: _inputDatetime.hour,
+                        minute: _inputDatetime.minute,
                       );
 
                   setState(() {
-                    inputDatetime = DateTime(
+                    _inputDatetime = DateTime(
                       pickedDate.year,
                       pickedDate.month,
                       pickedDate.day,
                       pickedTime.hour,
                       pickedTime.minute,
                     );
-                    print(inputDatetime);
                   });
                 },
-                child: Text(formatDateTime(inputDatetime)),
+                child: Text(formatDateTime(_inputDatetime)),
+
               ),
               const SizedBox(height: 10.0),
               const Text(
@@ -151,7 +171,7 @@ class _NewQuoteMenuState extends State<NewQuoteMenu> {
                   itemCount: _involvedPersonCount + 1,
                   itemBuilder: (BuildContext context, int index) {
                     if (index == _involvedPersonCount) {
-                      return IconButton(
+                      return _loadedFromServer ? Container() : IconButton(
                         onPressed: () {
                           setState(() {
                             ++_involvedPersonCount;
@@ -170,11 +190,12 @@ class _NewQuoteMenuState extends State<NewQuoteMenu> {
                             children: [
                               Expanded(
                                   child: QuoteMenuField(
+                                deactivate: _loadedFromServer,
                                 controller:
                                     _involvedPersonControllers.elementAt(index),
                                 labelText: "",
                               )),
-                              IconButton(
+                              _loadedFromServer ? Container() : IconButton(
                                   onPressed: () {
                                     setState(() {
                                       --_involvedPersonCount;
@@ -196,41 +217,47 @@ class _NewQuoteMenuState extends State<NewQuoteMenu> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: "Erstelle",
-        onPressed: () {
-          final Quote quote = Quote(
-            quote: _quoteController.text,
-            context: _contextController.text,
-            author: _authorController.text,
-            involvedPersons: List.generate(_involvedPersonCount, (index) {
-              return _involvedPersonControllers.elementAt(index).text;
-            }),
-            timestamp: inputDatetime,
-            id: id
-          );
+      floatingActionButton: _loadedFromServer
+          ? null
+          : FloatingActionButton(
+              tooltip: "Erstelle",
+              onPressed: () {
+                final Quote quote = Quote(
+                    quote: _quoteController.text,
+                    context: _contextController.text,
+                    author: _authorController.text,
+                    involvedPersons:
+                        List.generate(_involvedPersonCount, (index) {
+                      return _involvedPersonControllers.elementAt(index).text;
+                    }),
+                    timestamp: _inputDatetime,
+                    id: _id);
 
-          Navigator.pop(context, quote);
-        },
-        child: const Icon(Icons.check),
-      ),
+                Navigator.pop(context, quote);
+              },
+              child: const Icon(Icons.check),
+            ),
     );
   }
 }
 
 class QuoteMenuField extends StatelessWidget {
-  const QuoteMenuField({
-    Key? key,
-    required this.controller,
-    required this.labelText,
-  }) : super(key: key);
+  const QuoteMenuField(
+      {Key? key,
+      required this.controller,
+      required this.labelText,
+      required this.deactivate})
+      : super(key: key);
 
   final String labelText;
   final TextEditingController controller;
+  final bool deactivate;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
+      readOnly: deactivate,
+      enabled: !deactivate,
       autocorrect: false,
       controller: controller,
       textInputAction: TextInputAction.next,
