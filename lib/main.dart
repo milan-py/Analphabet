@@ -164,7 +164,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 onPressed: () {
                   showAboutDialog(
                       context: context,
-                      applicationVersion: "0.7",
+                      applicationVersion: "v0.8",
                       applicationLegalese: "von Milan Bömer",
                       applicationIcon: Expanded(
                         child: Image.asset("assets/app_icon.png",
@@ -215,7 +215,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             IconButton(
                 onPressed: () async {
-                  Uri url = Uri.http(
+                  Uri url = Uri.https(
                     "quote.hopto.org:8080",
                     "/",
                   );

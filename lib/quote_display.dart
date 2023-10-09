@@ -65,7 +65,7 @@ class _QuoteWidgetState extends State<QuoteWidget> {
 
   Future<void> deleteQuoteOnServer(BuildContext context) async {
     try {
-      Uri url = Uri.http(
+      Uri url = Uri.https(
         "quote.hopto.org:8080",
         "/${widget.quote.id}",
       );
@@ -156,9 +156,9 @@ class _QuoteWidgetState extends State<QuoteWidget> {
                           }
                         },
                         icon: const Icon(Icons.delete)),
-                IconButton(
+                loadedFromServer ? Container() : IconButton(
                   onPressed: () async {
-                    Uri url = Uri.http(
+                    Uri url = Uri.https(
                       "quote.hopto.org:8080",
                       "/",
                     );
