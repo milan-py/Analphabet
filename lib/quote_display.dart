@@ -67,9 +67,16 @@ class _QuoteWidgetState extends State<QuoteWidget> {
       Uri url = Uri.https(
         serverUrl,
         "/${widget.quote.id}",
+          {'username': userName}
       );
 
-      await http.delete(url, headers: {'auth': generateAuthCode()}).timeout(const Duration(seconds: 4));;
+
+
+      Response response = await http.delete(url, headers: {'auth': generateAuthCode()}).timeout(const Duration(seconds: 4));
+
+      if(mounted && handleInvalidAuth(context, response)) {
+        return;
+      }
     } on ClientException {
       showSnackBarMessage(context, "Konnte nicht löschen");
     }
@@ -167,6 +174,11 @@ class _QuoteWidgetState extends State<QuoteWidget> {
                       http.Response response = await http.put(url,
                           body: jsonEncode(quoteJson),
                           headers: {"Content-Type": "application/json", 'auth': generateAuthCode()}).timeout(const Duration(seconds: 4));
+
+                      if(mounted && handleInvalidAuth(context, response)) {
+                        return;
+                      }
+
                       if (response.statusCode == 200) {
                         return;
                       }

@@ -249,13 +249,16 @@ class _MyHomePageState extends State<MyHomePage> {
                 onPressed: () async {
                   Uri url = Uri.https(
                     serverUrl,
-                    "/",
+                    "/", {'username': userName}
                   );
                   try {
                     http.Response response = await http.get(url, headers: {
                       'auth': generateAuthCode()
                     }).timeout(const Duration(seconds: 4));
-                    ;
+
+                    if(mounted && handleInvalidAuth(context, response)) {
+                      return;
+                    }
 
                     Database db = await _database;
 
