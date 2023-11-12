@@ -256,11 +256,12 @@ class QuoteMenuField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TextField(
+      maxLines: null,
+      keyboardType: TextInputType.multiline,
       readOnly: deactivate,
-      enabled: !deactivate,
       autocorrect: false,
       controller: controller,
-      textInputAction: TextInputAction.next,
+      textInputAction: TextInputAction.newline,
       decoration: InputDecoration(
         border: const OutlineInputBorder(),
         labelText: labelText,

@@ -4,7 +4,6 @@ import 'package:anal_phabet/quote.dart';
 import 'package:anal_phabet/utils.dart';
 import "package:flutter/material.dart";
 import 'package:http/http.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:http/http.dart' as http;
 
@@ -66,11 +65,11 @@ class _QuoteWidgetState extends State<QuoteWidget> {
   Future<void> deleteQuoteOnServer(BuildContext context) async {
     try {
       Uri url = Uri.https(
-        "quote.hopto.org:8080",
+        serverUrl,
         "/${widget.quote.id}",
       );
 
-      await http.delete(url);
+      await http.delete(url, headers: {'auth': generateAuthCode()}).timeout(const Duration(seconds: 4));;
     } on ClientException {
       showSnackBarMessage(context, "Konnte nicht löschen");
     }
@@ -88,9 +87,7 @@ class _QuoteWidgetState extends State<QuoteWidget> {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: loadedFromServer
-                      ? Colors.blueGrey[600]
-                      : Theme.of(context).primaryColor,
+                  color: loadedFromServer ? Theme.of(context).colorScheme.tertiaryContainer: Theme.of(context).colorScheme.secondaryContainer,
                   borderRadius: const BorderRadius.all(Radius.circular(20)),
                 ),
                 child: Padding(
@@ -159,41 +156,26 @@ class _QuoteWidgetState extends State<QuoteWidget> {
                 loadedFromServer ? Container() : IconButton(
                   onPressed: () async {
                     Uri url = Uri.https(
-                      "quote.hopto.org:8080",
+                      serverUrl,
                       "/",
+                      {'username': userName!}
                     );
-
-                    final SharedPreferences preferences =
-                        await SharedPreferences.getInstance();
-                    final String name = preferences.getString("name") ?? "";
-
-                    if (name.isEmpty) {
-                      showSnackBarMessage(context,
-                          "Name muss in den Einstellungen gesetzt werden.");
-                      return;
-                    }
 
                     try {
                       var quoteJson = widget.quote.toJson();
-                      quoteJson["user"] = name;
+                      quoteJson["user"] = userName;
                       http.Response response = await http.put(url,
                           body: jsonEncode(quoteJson),
-                          headers: {"Content-Type": "application/json"});
+                          headers: {"Content-Type": "application/json", 'auth': generateAuthCode()}).timeout(const Duration(seconds: 4));
                       if (response.statusCode == 200) {
                         return;
                       }
                       if (response.statusCode == 429) {
-                        showSnackBarMessage(
-                            context, "Zu viele Anfragen, 10 pro Tag erlaubt");
-                        return;
-                      }
-                      if (jsonDecode(response.body)["error"] == "duplicate") {
-                        showSnackBarMessage(
-                            context, "Wurde bereits Hochgeladen");
+                        if(context.mounted) showSnackBarMessage(context, "Zu viele Anfragen, 10 pro Tag erlaubt");
                         return;
                       }
                     } catch (e) {
-                      showSnackBarMessage(context, "Etwas ist schiefgelaufen");
+                      if(context.mounted) showSnackBarMessage(context, "Etwas ist schiefgelaufen");
                     }
                   },
                   icon: const Icon(Icons.upload),

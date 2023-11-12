@@ -2,18 +2,33 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:anal_phabet/settings_menu.dart';
 import 'package:anal_phabet/utils.dart';
+import 'package:flutter/gestures.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:anal_phabet/quote.dart';
 import 'package:anal_phabet/quote_display.dart';
 import 'package:anal_phabet/quote_menu.dart';
+import 'package:anal_phabet/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:uuid/uuid.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  AndroidOptions getAndroidOptions() => const AndroidOptions(
+        encryptedSharedPreferences: true,
+      );
+
+  final storage = FlutterSecureStorage(aOptions: getAndroidOptions());
+  loginSecret =
+      await storage.read(key: 'secret', aOptions: getAndroidOptions());
+  userName = await storage.read(key: 'name', aOptions: getAndroidOptions());
+
   runApp(const MyApp());
 }
 
@@ -24,7 +39,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       theme: ThemeData(
-        primaryColor: const Color.fromARGB(255, 229, 222, 252),
         brightness: Brightness.light,
         useMaterial3: true,
       ),
@@ -34,10 +48,12 @@ class MyApp extends StatelessWidget {
       ),
       themeMode: ThemeMode.system,
       title: "Analphabet",
+      initialRoute: loginSecret == null ? "/login_menu" : "/",
       routes: {
         "/": (context) => const MyHomePage(title: "Analphabet"),
         "/new_quote_menu": (context) => const NewQuoteMenu(),
         "/settings_menu": (context) => const SettingsMenu(),
+        "/login_menu": (context) => const LoginPage()
       },
     );
   }
@@ -106,9 +122,14 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-    initializeDb().then((value) {
-      updateWithQuotesFromDb();
-    });
+
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => initializeDb().then(
+        (value) {
+          updateWithQuotesFromDb();
+        },
+      ),
+    );
   }
 
   @override
@@ -131,25 +152,22 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(0, 20, 0, 50),
-          child: ListView.builder(
-            itemCount: quotes.length,
-            itemBuilder: (BuildContext context, int index) {
-              return Column(
-                children: [
-                  QuoteWidget(
-                    quote: quotes.elementAt(index),
-                    database: _database,
-                    onQuoteUpdate: () => updateWithQuotesFromDb(),
-                  ),
-                  const SizedBox(
-                    height: 10.0,
-                  ),
-                ],
-              );
-            },
-          ),
+        child: ListView.builder(
+          itemCount: quotes.length,
+          itemBuilder: (BuildContext context, int index) {
+            return Column(
+              children: [
+                QuoteWidget(
+                  quote: quotes.elementAt(index),
+                  database: _database,
+                  onQuoteUpdate: () => updateWithQuotesFromDb(),
+                ),
+                const SizedBox(
+                  height: 10.0,
+                ),
+              ],
+            );
+          },
         ),
       ),
       bottomNavigationBar: BottomAppBar(
@@ -163,23 +181,37 @@ class _MyHomePageState extends State<MyHomePage> {
                 // shows about dialog
                 onPressed: () {
                   showAboutDialog(
-                      context: context,
-                      applicationVersion: "v0.8",
-                      applicationLegalese: "von Milan Bömer",
-                      applicationIcon: Expanded(
-                        child: Image.asset("assets/app_icon.png",
-                            fit: BoxFit.contain),
-                      ),
-                      children: [
-                        RichText(
-                          text: TextSpan(
-                            style: Theme.of(context).textTheme.bodyMedium,
-                            children: const [
-                              TextSpan(text: "Sehr experimentell"),
-                            ],
-                          ),
-                        )
-                      ]);
+                    // fixme: Lizenzen können nicht angezeigt werden
+                    context: context,
+                    applicationVersion: "v1.0",
+                    applicationLegalese: "von Milan Bömer",
+                    applicationIcon: Expanded(
+                      child: Image.asset("assets/app_icon.png",
+                          fit: BoxFit.contain),
+                    ),
+                    children: [
+                      RichText(
+                        text: TextSpan(
+                          style: Theme.of(context).textTheme.bodyMedium,
+                          children: [
+                            const TextSpan(text: "Discord-Server des Abizeitungs-komitees: "),
+                            TextSpan(
+                              text: 'https://discord.gg/apXKgdPKXh',
+                              style: const TextStyle(
+                                  color: Colors.blue,
+                                  ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () {
+                                  launchUrlString(
+                                      'https://discord.gg/apXKgdPKXh');
+                                },
+                            ),
+                            const TextSpan(text: '\nBei einem Problem der App bitte ein Ticket auf dem Discord-Server erstellen.')
+                          ],
+                        ),
+                      )
+                    ],
+                  );
                 },
                 icon: const Icon(Icons.info)),
             // makes bottom app bar bigger
@@ -216,11 +248,14 @@ class _MyHomePageState extends State<MyHomePage> {
             IconButton(
                 onPressed: () async {
                   Uri url = Uri.https(
-                    "quote.hopto.org:8080",
+                    serverUrl,
                     "/",
                   );
                   try {
-                    http.Response response = await http.get(url);
+                    http.Response response = await http.get(url, headers: {
+                      'auth': generateAuthCode()
+                    }).timeout(const Duration(seconds: 4));
+                    ;
 
                     Database db = await _database;
 
