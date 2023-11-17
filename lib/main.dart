@@ -183,7 +183,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   showAboutDialog(
                     // fixme: Lizenzen können nicht angezeigt werden
                     context: context,
-                    applicationVersion: "v1.0",
+                    applicationVersion: "v1.1",
                     applicationLegalese: "von Milan Bömer",
                     applicationIcon: Expanded(
                       child: Image.asset("assets/app_icon.png",
@@ -206,7 +206,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                       'https://discord.gg/apXKgdPKXh');
                                 },
                             ),
-                            const TextSpan(text: '\nBei einem Problem der App bitte ein Ticket auf dem Discord-Server erstellen.')
+                            const TextSpan(text: '\nBei einem Problem mit der App bitte ein Ticket auf dem Discord-Server erstellen.')
                           ],
                         ),
                       )
